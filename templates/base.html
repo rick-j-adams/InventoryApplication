@@ -19,6 +19,7 @@
         <a class="button secondary" href="{{ url_for('inventory') }}">Inventory</a>
         <a class="button secondary" href="{{ url_for('users') }}">Users</a>
         <a class="button secondary" href="{{ url_for('audit_log') }}">Audit Log</a>
+        <a class="button secondary" href="{{ url_for('export_inventory_csv') }}">Export CSV</a>
         <a class="button secondary" href="{{ url_for('logout') }}">Logout</a>
       </div>
       {% endif %}
@@ -36,6 +37,14 @@
       {% endwith %}
       {% block content %}{% endblock %}
     </main>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const warningMessages = Array.from(document.querySelectorAll('.flash-warning')).map(el => el.textContent.trim()).filter(Boolean);
+        if (warningMessages.length) {
+          alert(warningMessages.join('\n\n'));
+        }
+      });
+    </script>
   </div>
 </body>
 </html>

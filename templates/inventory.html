@@ -1,8 +1,12 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="dashboard-grid">
-  <section class="panel full-width">
-    <h2>Product Types</h2>
+  <section class="panel full-width collapsible-panel">
+    <div class="panel-header">
+      <h2>Product Types</h2>
+      <button type="button" class="button small secondary toggle-panel">Collapse</button>
+    </div>
+    <div class="panel-body">
     <form action="{{ url_for('save_type') }}" method="post" class="inline-form">
       <input type="text" name="Product_Type" placeholder="New type" required>
       <button class="button small" type="submit">Add</button>
@@ -18,10 +22,15 @@
         </li>
       {% endfor %}
     </ul>
+    </div>
   </section>
 
-  <section class="panel full-width">
-    <h2>Models</h2>
+  <section class="panel full-width collapsible-panel">
+    <div class="panel-header">
+      <h2>Models</h2>
+      <button type="button" class="button small secondary toggle-panel">Collapse</button>
+    </div>
+    <div class="panel-body">
     <form action="{{ url_for('save_model') }}" method="post" class="inline-form">
       <input type="text" name="Model_Number" placeholder="New model" required>
       <button class="button small" type="submit">Add</button>
@@ -37,10 +46,15 @@
         </li>
       {% endfor %}
     </ul>
+    </div>
   </section>
 
-  <section class="panel full-width">
-    <h2>Manufacturers</h2>
+  <section class="panel full-width collapsible-panel">
+    <div class="panel-header">
+      <h2>Manufacturers</h2>
+      <button type="button" class="button small secondary toggle-panel">Collapse</button>
+    </div>
+    <div class="panel-body">
     <form action="{{ url_for('save_manufacturer') }}" method="post" class="inline-form">
       <input type="text" name="Manufacturer_NAME" placeholder="New manufacturer" required>
       <button class="button small" type="submit">Add</button>
@@ -56,10 +70,15 @@
         </li>
       {% endfor %}
     </ul>
+    </div>
   </section>
 
-  <section class="panel full-width">
-    <h2>Inventory Items</h2>
+  <section class="panel full-width collapsible-panel">
+    <div class="panel-header">
+      <h2>Inventory Items</h2>
+      <button type="button" class="button small secondary toggle-panel">Collapse</button>
+    </div>
+    <div class="panel-body">
     <form action="{{ url_for('save_item') }}" method="post" class="grid-form">
       <input type="text" name="Item_Name" placeholder="Item name" required>
       <select name="ITEM_TYPE_OID" required>
@@ -97,6 +116,7 @@
         </li>
       {% endfor %}
     </ul>
+    </div>
   </section>
 </div>
 <script>
@@ -112,5 +132,14 @@
     window.scrollTo(0, Number(savedInventoryScroll));
     sessionStorage.removeItem(INVENTORY_SCROLL_KEY);
   }
+
+  document.querySelectorAll('.toggle-panel').forEach(button => {
+    button.addEventListener('click', () => {
+      const panel = button.closest('.collapsible-panel');
+      if (!panel) return;
+      panel.classList.toggle('collapsed');
+      button.textContent = panel.classList.contains('collapsed') ? 'Expand' : 'Collapse';
+    });
+  });
 </script>
 {% endblock %}

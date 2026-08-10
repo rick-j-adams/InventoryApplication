@@ -1,9 +1,11 @@
+import csv
+import io
 import json
 import os
 from datetime import datetime
 from functools import wraps
 
-from flask import Flask, render_template, redirect, url_for, request, flash
+from flask import Flask, render_template, redirect, url_for, request, flash, Response
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -100,6 +102,15 @@ def load_user(user_id):
 def inject_now():
     return {'now': datetime.utcnow()}
 
+def get_latest_tracking():
+    trackings = InventoryItemTracking.query.order_by(InventoryItemTracking.intentory_item_oid, InventoryItemTracking.last_update_datetime.desc()).all()
+    latest = {}
+    for tracking in trackings:
+        oid = tracking.intentory_item_oid
+        if oid not in latest:
+            latest[oid] = tracking
+    return latest
+
 @app.route('/')
 def index():
     if current_user.is_authenticated:
@@ -114,6 +125,15 @@ def login():
         user = InventoryItemUser.query.filter_by(username=username).first()
         if user and check_password_hash(user.encrypt_password_hash, password):
             login_user(user)
+            latest_tracking = get_latest_tracking()
+            alerts = []
+            for item in InventoryItem.query.order_by(InventoryItem.Item_Name).all():
+                tracking = latest_tracking.get(item.OID)
+                count = tracking.item_count if tracking else 0
+                if item.Alert_Level is not None and count < item.Alert_Level:
+                    alerts.append(f'{item.Item_Name} is below alert level ({count} < {item.Alert_Level})')
+            if alerts:
+                flash('ALERT: ' + ' | '.join(alerts), 'warning')
             flash('Welcome back, {}'.format(user.username), 'success')
             return redirect(url_for('dashboard'))
         flash('Invalid username or password', 'danger')
@@ -186,6 +206,39 @@ def inventory():
     items = InventoryItem.query.order_by(InventoryItem.Item_Name).all()
     return render_template('inventory.html', item_types=item_types, item_models=item_models,
                            manufacturers=manufacturers, items=items)
+
+@app.route('/inventory/export-csv')
+@login_required
+def export_inventory_csv():
+    latest_tracking = get_latest_tracking()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Manufacturer', 'Item Name', 'Quantity', 'Notes', 'Product', 'Type', 'Model Number', 'Updated by'])
+
+    items = InventoryItem.query.order_by(InventoryItem.Item_Name).all()
+    for item in items:
+        tracking = latest_tracking.get(item.OID)
+        quantity = tracking.item_count if tracking else 0
+        product = item.item_type.Product_Type if item.item_type else ''
+        updated_by = item.update_user.username if item.update_user else (item.add_user.username if item.add_user else 'unknown')
+        writer.writerow([
+            item.manufacturer.Manufacturer_NAME if item.manufacturer else '',
+            item.Item_Name,
+            quantity,
+            item.Note or '',
+            product,
+            '',
+            item.model.Model_Number if item.model else '',
+            updated_by
+        ])
+
+    csv_content = output.getvalue()
+    output.close()
+    return Response(csv_content,
+                    mimetype='text/csv',
+                    headers={
+                        'Content-Disposition': 'attachment; filename=inventory_export.csv'
+                    })
 
 @app.route('/audit')
 @login_required
@@ -344,12 +397,14 @@ def delete_item():
     item = InventoryItem.query.get(int(oid))
     if item is None:
         flash('Inventory item not found.', 'danger')
-    elif InventoryItemTracking.query.filter_by(intentory_item_oid=item.OID).first():
-        flash('Cannot delete inventory item while it has tracking records.', 'danger')
     else:
-        db.session.delete(item)
-        db.session.commit()
-        flash('Inventory item deleted.', 'success')
+        latest_tracking = InventoryItemTracking.query.filter_by(intentory_item_oid=item.OID).order_by(InventoryItemTracking.last_update_datetime.desc()).first()
+        if latest_tracking and latest_tracking.item_count > 0:
+            flash('Cannot delete inventory item while it has a tracked quantity above zero.', 'danger')
+        else:
+            db.session.delete(item)
+            db.session.commit()
+            flash('Inventory item deleted.', 'success')
     return redirect(url_for('inventory'))
 
 @app.route('/item/save', methods=['POST'])
@@ -457,6 +512,8 @@ def adjust_tracking():
         action = 'decreased'
 
     flash(f'Inventory count {action} to {tracking.item_count}.', 'success')
+    if item.Alert_Level is not None and tracking.item_count < item.Alert_Level:
+        flash(f'ALERT: {item.Item_Name} count {tracking.item_count} is below alert level {item.Alert_Level}.', 'warning')
     return redirect(url_for('dashboard'))
 
 @app.route('/users')

@@ -112,6 +112,22 @@ body {
   grid-column: 1 / -1;
 }
 
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.panel-body {
+  display: block;
+}
+
+.collapsible-panel.collapsed .panel-body {
+  display: none;
+}
+
 .chart-card {
   min-height: 360px;
   padding: 18px;
