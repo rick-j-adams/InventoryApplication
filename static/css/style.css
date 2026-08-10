@@ -112,6 +112,69 @@ body {
   grid-column: 1 / -1;
 }
 
+.chart-card {
+  min-height: 360px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1px rgba(168, 77, 147, 0.08);
+}
+
+.chart-card canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.chart-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.chart-card {
+  flex: 0 1 75%;
+  min-width: 360px;
+}
+
+.chart-controls {
+  flex: 0 1 25%;
+  min-width: 240px;
+}
+
+.control-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.control-list-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(169, 77, 147, 0.14);
+}
+
+.control-item-label {
+  font-weight: 600;
+  color: #5f2141;
+}
+
+.adjust-row {
+  display: flex;
+  gap: 8px;
+}
+
+.adjust-row .inline-form {
+  margin: 0;
+}
+
 .panel h2 {
   margin-top: 0;
   font-size: 1.35rem;
@@ -155,6 +218,27 @@ body {
   grid-auto-flow: column;
   gap: 10px;
   align-items: center;
+}
+
+.inline-delete {
+  display: inline-block;
+  margin-left: 14px;
+}
+
+.inline-delete .button,
+.adjust-button .button {
+  padding: 8px 12px;
+}
+
+.adjust-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-end;
+}
+
+.adjust-column .inline-form {
+  margin: 0;
 }
 
 .grid-form input,

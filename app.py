@@ -1,3 +1,4 @@
+import json
 import os
 from datetime import datetime
 from functools import wraps
@@ -6,7 +7,7 @@ from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user, UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy import func
+from sqlalchemy import func, inspect, text
 from sqlalchemy.orm import relationship
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -32,7 +33,7 @@ class InventoryItemUser(UserMixin, db.Model):
 class InventoryItemType(db.Model):
     __tablename__ = 'inventory_item_type'
     OID = db.Column(db.Integer, primary_key=True)
-    Product_Type = db.Column(db.String(200), nullable=False)
+    Product_Type = db.Column(db.String(200), unique=True, nullable=False)
     add_user_oid = db.Column(db.Integer, db.ForeignKey('inventory_item_user.OID'), nullable=False)
     add_datetime = db.Column(db.DateTime, nullable=False, default=func.now())
     update_user_oid = db.Column(db.Integer, db.ForeignKey('inventory_item_user.OID'), nullable=True)
@@ -43,7 +44,7 @@ class InventoryItemType(db.Model):
 class InventoryItemModel(db.Model):
     __tablename__ = 'inventory_item_model'
     OID = db.Column(db.Integer, primary_key=True)
-    Model_Number = db.Column(db.String(200), nullable=False)
+    Model_Number = db.Column(db.String(200), unique=True, nullable=False)
     add_user_oid = db.Column(db.Integer, db.ForeignKey('inventory_item_user.OID'), nullable=False)
     add_datetime = db.Column(db.DateTime, nullable=False, default=func.now())
     update_user_oid = db.Column(db.Integer, db.ForeignKey('inventory_item_user.OID'), nullable=True)
@@ -54,7 +55,7 @@ class InventoryItemModel(db.Model):
 class InventoryItemManufacturer(db.Model):
     __tablename__ = 'inventory_item_manufacturer'
     OID = db.Column(db.Integer, primary_key=True)
-    Manufacturer_NAME = db.Column(db.String(200), nullable=False)
+    Manufacturer_NAME = db.Column(db.String(200), unique=True, nullable=False)
     add_user_oid = db.Column(db.Integer, db.ForeignKey('inventory_item_user.OID'), nullable=False)
     add_date_time = db.Column(db.DateTime, nullable=False, default=func.now())
     update_user_oid = db.Column(db.Integer, db.ForeignKey('inventory_item_user.OID'), nullable=True)
@@ -68,7 +69,9 @@ class InventoryItem(db.Model):
     ITEM_TYPE_OID = db.Column(db.Integer, db.ForeignKey('inventory_item_type.OID'), nullable=False)
     MODEL_OID = db.Column(db.Integer, db.ForeignKey('inventory_item_model.OID'), nullable=False)
     Manufacturer_oid = db.Column(db.Integer, db.ForeignKey('inventory_item_manufacturer.OID'), nullable=False)
-    Item_Name = db.Column(db.String(250), nullable=False)
+    Item_Name = db.Column(db.String(250), unique=True, nullable=False)
+    Note = db.Column(db.String(500), nullable=True)
+    Alert_Level = db.Column(db.Integer, nullable=False, default=0)
     add_user_oid = db.Column(db.Integer, db.ForeignKey('inventory_item_user.OID'), nullable=False)
     add_date_time = db.Column(db.DateTime, nullable=False, default=func.now())
     update_user_oid = db.Column(db.Integer, db.ForeignKey('inventory_item_user.OID'), nullable=True)
@@ -138,13 +141,51 @@ def create_or_update_entity(model, form_data, obj=None):
 @app.route('/dashboard')
 @login_required
 def dashboard():
+    items = InventoryItem.query.order_by(InventoryItem.Item_Name).all()
+    trackings = InventoryItemTracking.query.order_by(InventoryItemTracking.intentory_item_oid, InventoryItemTracking.last_update_datetime.desc()).all()
+    latest_tracking = {}
+    for tracking in trackings:
+        oid = tracking.intentory_item_oid
+        if oid not in latest_tracking:
+            latest_tracking[oid] = tracking
+
+    tracked_items = []
+    chart_data = []
+    for item in items:
+        tracking = latest_tracking.get(item.OID)
+        count = tracking.item_count if tracking else 0
+        last_update_user = tracking.update_user.username if tracking and tracking.update_user else 'N/A'
+        last_update_datetime = tracking.last_update_datetime.strftime('%Y-%m-%d %H:%M') if tracking and tracking.last_update_datetime else 'N/A'
+
+        tracked_items.append({
+            'item': item,
+            'count': count,
+            'tracking_oid': tracking.OID if tracking else None
+        })
+
+        chart_data.append({
+            'label': item.Item_Name,
+            'count': count,
+            'type': item.item_type.Product_Type if item.item_type else '',
+            'model': item.model.Model_Number if item.model else '',
+            'manufacturer': item.manufacturer.Manufacturer_NAME if item.manufacturer else '',
+            'last_update_user': last_update_user,
+            'item_name': item.Item_Name,
+            'last_update_datetime': last_update_datetime
+        })
+
+    chart_json = json.dumps(chart_data)
+    return render_template('dashboard.html', items=items, trackings=trackings, chart_data=chart_json, tracked_items=tracked_items)
+
+@app.route('/inventory')
+@login_required
+def inventory():
     item_types = InventoryItemType.query.order_by(InventoryItemType.Product_Type).all()
     item_models = InventoryItemModel.query.order_by(InventoryItemModel.Model_Number).all()
     manufacturers = InventoryItemManufacturer.query.order_by(InventoryItemManufacturer.Manufacturer_NAME).all()
     items = InventoryItem.query.order_by(InventoryItem.Item_Name).all()
-    trackings = InventoryItemTracking.query.order_by(InventoryItemTracking.OID.desc()).all()
-    return render_template('dashboard.html', item_types=item_types, item_models=item_models,
-                           manufacturers=manufacturers, items=items, trackings=trackings)
+    return render_template('inventory.html', item_types=item_types, item_models=item_models,
+                           manufacturers=manufacturers, items=items)
 
 @app.route('/audit')
 @login_required
@@ -161,7 +202,16 @@ def audit_log():
 @login_required
 def save_type():
     oid = request.form.get('OID')
-    product_type = request.form.get('Product_Type')
+    product_type = request.form.get('Product_Type', '').strip()
+    if not product_type:
+        flash('Product type cannot be empty.', 'danger')
+        return redirect(url_for('inventory'))
+
+    existing = InventoryItemType.query.filter(func.lower(InventoryItemType.Product_Type) == product_type.lower()).first()
+    if existing and (not oid or existing.OID != int(oid)):
+        flash('Product type already exists.', 'danger')
+        return redirect(url_for('inventory'))
+
     if oid:
         item_type = InventoryItemType.query.get(int(oid))
         item_type.Product_Type = product_type
@@ -172,13 +222,22 @@ def save_type():
     db.session.add(item_type)
     db.session.commit()
     flash('Product type saved.', 'success')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('inventory'))
 
 @app.route('/model/save', methods=['POST'])
 @login_required
 def save_model():
     oid = request.form.get('OID')
-    model_number = request.form.get('Model_Number')
+    model_number = request.form.get('Model_Number', '').strip()
+    if not model_number:
+        flash('Model number cannot be empty.', 'danger')
+        return redirect(url_for('inventory'))
+
+    existing = InventoryItemModel.query.filter(func.lower(InventoryItemModel.Model_Number) == model_number.lower()).first()
+    if existing and (not oid or existing.OID != int(oid)):
+        flash('Model already exists.', 'danger')
+        return redirect(url_for('inventory'))
+
     if oid:
         item_model = InventoryItemModel.query.get(int(oid))
         item_model.Model_Number = model_number
@@ -189,13 +248,22 @@ def save_model():
     db.session.add(item_model)
     db.session.commit()
     flash('Model saved.', 'success')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('inventory'))
 
 @app.route('/manufacturer/save', methods=['POST'])
 @login_required
 def save_manufacturer():
     oid = request.form.get('OID')
-    name = request.form.get('Manufacturer_NAME')
+    name = request.form.get('Manufacturer_NAME', '').strip()
+    if not name:
+        flash('Manufacturer name cannot be empty.', 'danger')
+        return redirect(url_for('inventory'))
+
+    existing = InventoryItemManufacturer.query.filter(func.lower(InventoryItemManufacturer.Manufacturer_NAME) == name.lower()).first()
+    if existing and (not oid or existing.OID != int(oid)):
+        flash('Manufacturer already exists.', 'danger')
+        return redirect(url_for('inventory'))
+
     if oid:
         manufacturer = InventoryItemManufacturer.query.get(int(oid))
         manufacturer.Manufacturer_NAME = name
@@ -206,33 +274,129 @@ def save_manufacturer():
     db.session.add(manufacturer)
     db.session.commit()
     flash('Manufacturer saved.', 'success')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('inventory'))
+
+@app.route('/type/delete', methods=['POST'])
+@login_required
+def delete_type():
+    oid = request.form.get('OID')
+    if not oid:
+        flash('Invalid product type selection.', 'danger')
+        return redirect(url_for('inventory'))
+
+    item_type = InventoryItemType.query.get(int(oid))
+    if item_type is None:
+        flash('Product type not found.', 'danger')
+    elif InventoryItem.query.filter_by(ITEM_TYPE_OID=item_type.OID).first():
+        flash('Cannot delete product type while it is used by inventory items.', 'danger')
+    else:
+        db.session.delete(item_type)
+        db.session.commit()
+        flash('Product type deleted.', 'success')
+    return redirect(url_for('inventory'))
+
+@app.route('/model/delete', methods=['POST'])
+@login_required
+def delete_model():
+    oid = request.form.get('OID')
+    if not oid:
+        flash('Invalid model selection.', 'danger')
+        return redirect(url_for('inventory'))
+
+    item_model = InventoryItemModel.query.get(int(oid))
+    if item_model is None:
+        flash('Model not found.', 'danger')
+    elif InventoryItem.query.filter_by(MODEL_OID=item_model.OID).first():
+        flash('Cannot delete model while it is used by inventory items.', 'danger')
+    else:
+        db.session.delete(item_model)
+        db.session.commit()
+        flash('Model deleted.', 'success')
+    return redirect(url_for('inventory'))
+
+@app.route('/manufacturer/delete', methods=['POST'])
+@login_required
+def delete_manufacturer():
+    oid = request.form.get('OID')
+    if not oid:
+        flash('Invalid manufacturer selection.', 'danger')
+        return redirect(url_for('inventory'))
+
+    manufacturer = InventoryItemManufacturer.query.get(int(oid))
+    if manufacturer is None:
+        flash('Manufacturer not found.', 'danger')
+    elif InventoryItem.query.filter_by(Manufacturer_oid=manufacturer.OID).first():
+        flash('Cannot delete manufacturer while it is used by inventory items.', 'danger')
+    else:
+        db.session.delete(manufacturer)
+        db.session.commit()
+        flash('Manufacturer deleted.', 'success')
+    return redirect(url_for('inventory'))
+
+@app.route('/item/delete', methods=['POST'])
+@login_required
+def delete_item():
+    oid = request.form.get('OID')
+    if not oid:
+        flash('Invalid inventory item selection.', 'danger')
+        return redirect(url_for('inventory'))
+
+    item = InventoryItem.query.get(int(oid))
+    if item is None:
+        flash('Inventory item not found.', 'danger')
+    elif InventoryItemTracking.query.filter_by(intentory_item_oid=item.OID).first():
+        flash('Cannot delete inventory item while it has tracking records.', 'danger')
+    else:
+        db.session.delete(item)
+        db.session.commit()
+        flash('Inventory item deleted.', 'success')
+    return redirect(url_for('inventory'))
 
 @app.route('/item/save', methods=['POST'])
 @login_required
 def save_item():
     oid = request.form.get('OID')
-    item_name = request.form.get('Item_Name')
+    item_name = request.form.get('Item_Name', '').strip()
     item_type_oid = request.form.get('ITEM_TYPE_OID')
     model_oid = request.form.get('MODEL_OID')
     manufacturer_oid = request.form.get('Manufacturer_oid')
+    note = request.form.get('Note', '').strip() or None
+    alert_level = request.form.get('Alert_Level', '').strip()
+    try:
+        alert_level = int(alert_level) if alert_level else 0
+        if alert_level < 0:
+            alert_level = 0
+    except ValueError:
+        alert_level = 0
+
+    if not item_name:
+        flash('Item name cannot be empty.', 'danger')
+        return redirect(url_for('inventory'))
+
+    existing = InventoryItem.query.filter(func.lower(InventoryItem.Item_Name) == item_name.lower()).first()
+    if existing and (not oid or existing.OID != int(oid)):
+        flash('Item name already exists.', 'danger')
+        return redirect(url_for('inventory'))
+
     if oid:
         item = InventoryItem.query.get(int(oid))
         item.Item_Name = item_name
         item.ITEM_TYPE_OID = int(item_type_oid)
         item.MODEL_OID = int(model_oid)
         item.Manufacturer_oid = int(manufacturer_oid)
+        item.Note = note
+        item.Alert_Level = alert_level
         item.update_user_oid = current_user.OID
         item.last_update_datetime = datetime.utcnow()
     else:
         item = InventoryItem(Item_Name=item_name, ITEM_TYPE_OID=int(item_type_oid), MODEL_OID=int(model_oid),
-                             Manufacturer_oid=int(manufacturer_oid), add_user_oid=current_user.OID,
-                             add_date_time=datetime.utcnow(), update_user_oid=current_user.OID,
-                             last_update_datetime=datetime.utcnow())
+                             Manufacturer_oid=int(manufacturer_oid), Note=note, Alert_Level=alert_level,
+                             add_user_oid=current_user.OID, add_date_time=datetime.utcnow(),
+                             update_user_oid=current_user.OID, last_update_datetime=datetime.utcnow())
     db.session.add(item)
     db.session.commit()
     flash('Item saved.', 'success')
-    return redirect(url_for('dashboard'))
+    return redirect(url_for('inventory'))
 
 @app.route('/tracking/save', methods=['POST'])
 @login_required
@@ -251,6 +415,48 @@ def save_tracking():
     db.session.add(tracking)
     db.session.commit()
     flash('Tracking entry saved.', 'success')
+    return redirect(url_for('dashboard'))
+
+@app.route('/tracking/adjust', methods=['POST'])
+@login_required
+def adjust_tracking():
+    intentory_item_oid = request.form.get('intentory_item_oid')
+    delta = request.form.get('delta')
+    if not intentory_item_oid or delta is None:
+        flash('Invalid inventory adjustment.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    try:
+        delta = int(delta)
+    except ValueError:
+        flash('Invalid adjustment value.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    item = InventoryItem.query.get(int(intentory_item_oid))
+    if item is None:
+        flash('Inventory item not found.', 'danger')
+        return redirect(url_for('dashboard'))
+
+    tracking = InventoryItemTracking.query.filter_by(intentory_item_oid=item.OID).order_by(InventoryItemTracking.last_update_datetime.desc()).first()
+    if tracking:
+        tracking.item_count = max(0, tracking.item_count + delta)
+        tracking.update_user_oid = current_user.OID
+        tracking.last_update_datetime = datetime.utcnow()
+    else:
+        tracking = InventoryItemTracking(intentory_item_oid=item.OID,
+                                         item_count=max(0, delta),
+                                         update_user_oid=current_user.OID,
+                                         last_update_datetime=datetime.utcnow())
+    db.session.add(tracking)
+    db.session.commit()
+
+    action = 'updated'
+    if delta > 0:
+        action = 'increased'
+    elif delta < 0:
+        action = 'decreased'
+
+    flash(f'Inventory count {action} to {tracking.item_count}.', 'success')
     return redirect(url_for('dashboard'))
 
 @app.route('/users')
@@ -316,6 +522,15 @@ def delete_user():
 
 def ensure_database():
     db.create_all()
+
+    inspector = inspect(db.engine)
+    existing_columns = [col['name'] for col in inspector.get_columns('inventory_item')]
+    with db.engine.connect() as connection:
+        if 'Note' not in existing_columns:
+            connection.execute(text('ALTER TABLE inventory_item ADD COLUMN Note VARCHAR(500)'))
+        if 'Alert_Level' not in existing_columns:
+            connection.execute(text('ALTER TABLE inventory_item ADD COLUMN Alert_Level INTEGER NOT NULL DEFAULT 0'))
+
     if not InventoryItemUser.query.filter_by(username='admin_user').first():
         password_hash = generate_password_hash('password1')
         admin = InventoryItemUser(username='admin_user', encrypt_password_hash=password_hash)

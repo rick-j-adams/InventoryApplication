@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard-grid">
+  <section class="panel full-width">
+    <h2>Product Types</h2>
+    <form action="{{ url_for('save_type') }}" method="post" class="inline-form">
+      <input type="text" name="Product_Type" placeholder="New type" required>
+      <button class="button small" type="submit">Add</button>
+    </form>
+    <ul class="item-list">
+      {% for type in item_types %}
+        <li>
+          {{ type.Product_Type }}
+          <form action="{{ url_for('delete_type') }}" method="post" class="inline-form inline-delete">
+            <input type="hidden" name="OID" value="{{ type.OID }}">
+            <button class="button small secondary" type="submit">Delete</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel full-width">
+    <h2>Models</h2>
+    <form action="{{ url_for('save_model') }}" method="post" class="inline-form">
+      <input type="text" name="Model_Number" placeholder="New model" required>
+      <button class="button small" type="submit">Add</button>
+    </form>
+    <ul class="item-list">
+      {% for model in item_models %}
+        <li>
+          {{ model.Model_Number }}
+          <form action="{{ url_for('delete_model') }}" method="post" class="inline-form inline-delete">
+            <input type="hidden" name="OID" value="{{ model.OID }}">
+            <button class="button small secondary" type="submit">Delete</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel full-width">
+    <h2>Manufacturers</h2>
+    <form action="{{ url_for('save_manufacturer') }}" method="post" class="inline-form">
+      <input type="text" name="Manufacturer_NAME" placeholder="New manufacturer" required>
+      <button class="button small" type="submit">Add</button>
+    </form>
+    <ul class="item-list">
+      {% for manufacturer in manufacturers %}
+        <li>
+          {{ manufacturer.Manufacturer_NAME }}
+          <form action="{{ url_for('delete_manufacturer') }}" method="post" class="inline-form inline-delete">
+            <input type="hidden" name="OID" value="{{ manufacturer.OID }}">
+            <button class="button small secondary" type="submit">Delete</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel full-width">
+    <h2>Inventory Items</h2>
+    <form action="{{ url_for('save_item') }}" method="post" class="grid-form">
+      <input type="text" name="Item_Name" placeholder="Item name" required>
+      <select name="ITEM_TYPE_OID" required>
+        <option value="">Type</option>
+        {% for type in item_types %}
+          <option value="{{ type.OID }}">{{ type.Product_Type }}</option>
+        {% endfor %}
+      </select>
+      <select name="MODEL_OID" required>
+        <option value="">Model</option>
+        {% for model in item_models %}
+          <option value="{{ model.OID }}">{{ model.Model_Number }}</option>
+        {% endfor %}
+      </select>
+      <select name="Manufacturer_oid" required>
+        <option value="">Manufacturer</option>
+        {% for manufacturer in manufacturers %}
+          <option value="{{ manufacturer.OID }}">{{ manufacturer.Manufacturer_NAME }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" name="Note" placeholder="Note">
+      <input type="number" name="Alert_Level" placeholder="Alert level" min="0">
+      <button class="button" type="submit">Add Item</button>
+    </form>
+    <ul class="item-list wide-list">
+      {% for item in items %}
+        <li>
+          {{ item.Item_Name }} — Type {{ item.item_type.Product_Type if item.item_type else item.ITEM_TYPE_OID }}, Model {{ item.model.Model_Number if item.model else item.MODEL_OID }}, Manufacturer {{ item.manufacturer.Manufacturer_NAME if item.manufacturer else item.Manufacturer_oid }}
+          {% if item.Alert_Level is not none %}Alert: {{ item.Alert_Level }}{% endif %}
+          {% if item.Note %}<br>Note: {{ item.Note }}{% endif %}
+          <form action="{{ url_for('delete_item') }}" method="post" class="inline-form inline-delete">
+            <input type="hidden" name="OID" value="{{ item.OID }}">
+            <button class="button small secondary" type="submit">Delete</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+<script>
+  const INVENTORY_SCROLL_KEY = 'inventoryScrollPosition';
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', () => {
+      sessionStorage.setItem(INVENTORY_SCROLL_KEY, window.scrollY.toString());
+    });
+  });
+
+  const savedInventoryScroll = sessionStorage.getItem(INVENTORY_SCROLL_KEY);
+  if (savedInventoryScroll !== null) {
+    window.scrollTo(0, Number(savedInventoryScroll));
+    sessionStorage.removeItem(INVENTORY_SCROLL_KEY);
+  }
+</script>
+{% endblock %}

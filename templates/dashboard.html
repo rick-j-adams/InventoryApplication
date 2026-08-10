@@ -1,79 +1,9 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="dashboard-grid">
-  <section class="panel">
-    <h2>Product Types</h2>
-    <form action="{{ url_for('save_type') }}" method="post" class="inline-form">
-      <input type="text" name="Product_Type" placeholder="New type" required>
-      <button class="button small" type="submit">Add</button>
-    </form>
-    <ul class="item-list">
-      {% for type in item_types %}
-        <li>{{ type.Product_Type }}</li>
-      {% endfor %}
-    </ul>
-  </section>
-
-  <section class="panel">
-    <h2>Models</h2>
-    <form action="{{ url_for('save_model') }}" method="post" class="inline-form">
-      <input type="text" name="Model_Number" placeholder="New model" required>
-      <button class="button small" type="submit">Add</button>
-    </form>
-    <ul class="item-list">
-      {% for model in item_models %}
-        <li>{{ model.Model_Number }}</li>
-      {% endfor %}
-    </ul>
-  </section>
-
-  <section class="panel">
-    <h2>Manufacturers</h2>
-    <form action="{{ url_for('save_manufacturer') }}" method="post" class="inline-form">
-      <input type="text" name="Manufacturer_NAME" placeholder="New manufacturer" required>
-      <button class="button small" type="submit">Add</button>
-    </form>
-    <ul class="item-list">
-      {% for manufacturer in manufacturers %}
-        <li>{{ manufacturer.Manufacturer_NAME }}</li>
-      {% endfor %}
-    </ul>
-  </section>
-
-  <section class="panel full-width">
-    <h2>Inventory Items</h2>
-    <form action="{{ url_for('save_item') }}" method="post" class="grid-form">
-      <input type="text" name="Item_Name" placeholder="Item name" required>
-      <select name="ITEM_TYPE_OID" required>
-        <option value="">Type</option>
-        {% for type in item_types %}
-          <option value="{{ type.OID }}">{{ type.Product_Type }}</option>
-        {% endfor %}
-      </select>
-      <select name="MODEL_OID" required>
-        <option value="">Model</option>
-        {% for model in item_models %}
-          <option value="{{ model.OID }}">{{ model.Model_Number }}</option>
-        {% endfor %}
-      </select>
-      <select name="Manufacturer_oid" required>
-        <option value="">Manufacturer</option>
-        {% for manufacturer in manufacturers %}
-          <option value="{{ manufacturer.OID }}">{{ manufacturer.Manufacturer_NAME }}</option>
-        {% endfor %}
-      </select>
-      <button class="button" type="submit">Add Item</button>
-    </form>
-    <ul class="item-list wide-list">
-      {% for item in items %}
-        <li>{{ item.Item_Name }} — Type {{ item.item_type.Product_Type if item.item_type else item.ITEM_TYPE_OID }}, Model {{ item.model.Model_Number if item.model else item.MODEL_OID }}, Manufacturer {{ item.manufacturer.Manufacturer_NAME if item.manufacturer else item.Manufacturer_oid }}</li>
-      {% endfor %}
-    </ul>
-  </section>
-
   <section class="panel full-width">
     <h2>Tracking</h2>
-    <form action="{{ url_for('save_tracking') }}" method="post" class="grid-form">
+    <form action="{{ url_for('save_tracking') }}" method="post" class="grid-form" data-save-scroll>
       <select name="intentory_item_oid" required>
         <option value="">Inventory item</option>
         {% for item in items %}
@@ -83,11 +13,126 @@
       <input type="number" name="item_count" placeholder="Count" min="0" required>
       <button class="button" type="submit">Add / Update Count</button>
     </form>
-    <ul class="item-list wide-list">
-      {% for tracking in trackings %}
-        <li>{{ tracking.item.Item_Name if tracking.item else 'Item ' ~ tracking.intentory_item_oid }} — Count {{ tracking.item_count }} — Updated {{ tracking.last_update_datetime.strftime('%Y-%m-%d %H:%M') if tracking.last_update_datetime else 'N/A' }} — By {{ tracking.update_user.username if tracking.update_user else 'unknown' }}</li>
-      {% endfor %}
-    </ul>
+  </section>
+
+  <section class="panel full-width">
+    <h2>Inventory Count Chart</h2>
+    <div class="chart-panel">
+      <div class="chart-card">
+        <canvas id="inventoryChart"></canvas>
+      </div>
+      <div class="chart-controls">
+        <h3>Adjust Counts</h3>
+        <ul class="control-list">
+          {% for tracked in tracked_items %}
+            <li class="control-list-item">
+              <span class="control-item-label">{{ tracked.item.Item_Name }} — {{ tracked.count }}</span>
+              <div class="adjust-row">
+                <form action="{{ url_for('adjust_tracking') }}" method="post" class="inline-form adjust-button" data-save-scroll>
+                  <input type="hidden" name="intentory_item_oid" value="{{ tracked.item.OID }}">
+                  <input type="hidden" name="delta" value="-1">
+                  <button class="button small secondary">-</button>
+                </form>
+                <form action="{{ url_for('adjust_tracking') }}" method="post" class="inline-form adjust-button" data-save-scroll>
+                  <input type="hidden" name="intentory_item_oid" value="{{ tracked.item.OID }}">
+                  <input type="hidden" name="delta" value="1">
+                  <button class="button small">+</button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
   </section>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+  const chartData = {{ chart_data | safe }};
+  const labels = chartData.map(item => item.label);
+  const counts = chartData.map(item => item.count);
+  const hoverItems = chartData;
+  const colors = [
+    'rgba(168, 77, 147, 0.86)',
+    'rgba(255, 138, 190, 0.86)',
+    'rgba(255, 98, 165, 0.86)',
+    'rgba(193, 45, 105, 0.86)',
+    'rgba(238, 159, 205, 0.86)',
+    'rgba(215, 77, 120, 0.86)',
+    'rgba(200, 80, 150, 0.86)',
+    'rgba(242, 137, 180, 0.86)'
+  ];
+  const backgroundColors = labels.map((_, index) => colors[index % colors.length]);
+  const borderColors = labels.map((_, index) => backgroundColors[index].replace('0.86', '1'));
+
+  const ctx = document.getElementById('inventoryChart');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Current count',
+        data: counts,
+        backgroundColor: backgroundColors,
+        borderColor: borderColors,
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            title(context) {
+              return context[0].label;
+            },
+            label(context) {
+              return `Count: ${context.parsed.x}`;
+            },
+            afterBody(context) {
+              const item = hoverItems[context[0].dataIndex];
+              return [
+                `Type: ${item.type}`,
+                `Model: ${item.model}`,
+                `Manufacturer: ${item.manufacturer}`,
+                `Updated by: ${item.last_update_user}`,
+                `Updated: ${item.last_update_datetime}`
+              ];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(168, 77, 147, 0.12)'
+          },
+          ticks: {
+            color: '#5f2141'
+          }
+        },
+        y: {
+        }
+      }
+    }
+  });
+
+  const SCROLL_KEY = 'dashboardScrollPosition';
+  const saveScrollForms = document.querySelectorAll('form[data-save-scroll]');
+  saveScrollForms.forEach(form => {
+    form.addEventListener('submit', () => {
+      sessionStorage.setItem(SCROLL_KEY, window.scrollY.toString());
+    });
+  });
+
+  const savedScroll = sessionStorage.getItem(SCROLL_KEY);
+  if (savedScroll !== null) {
+    window.scrollTo(0, Number(savedScroll));
+    sessionStorage.removeItem(SCROLL_KEY);
+  }
+</script>
 {% endblock %}
