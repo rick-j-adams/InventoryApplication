@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard-grid">
+  <section class="panel full-width">
+    <h2>Audit Log</h2>
+    <div class="audit-grid">
+      <div>
+        <h3>Types</h3>
+        <ul class="item-list">
+          {% for type in item_types %}
+            <li>{{ type.Product_Type }} — Added by {{ type.add_user.username if type.add_user else 'unknown' }} on {{ type.add_datetime.strftime('%Y-%m-%d %H:%M') }}{% if type.last_update_datetime %}, updated by {{ type.update_user.username if type.update_user else 'unknown' }} on {{ type.last_update_datetime.strftime('%Y-%m-%d %H:%M') }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div>
+        <h3>Models</h3>
+        <ul class="item-list">
+          {% for model in item_models %}
+            <li>{{ model.Model_Number }} — Added by {{ model.add_user.username if model.add_user else 'unknown' }} on {{ model.add_datetime.strftime('%Y-%m-%d %H:%M') }}{% if model.last_update_datetime %}, updated by {{ model.update_user.username if model.update_user else 'unknown' }} on {{ model.last_update_datetime.strftime('%Y-%m-%d %H:%M') }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div>
+        <h3>Manufacturers</h3>
+        <ul class="item-list">
+          {% for manufacturer in manufacturers %}
+            <li>{{ manufacturer.Manufacturer_NAME }} — Added by {{ manufacturer.add_user.username if manufacturer.add_user else 'unknown' }} on {{ manufacturer.add_date_time.strftime('%Y-%m-%d %H:%M') }}{% if manufacturer.last_update_datetime %}, updated by {{ manufacturer.update_user.username if manufacturer.update_user else 'unknown' }} on {{ manufacturer.last_update_datetime.strftime('%Y-%m-%d %H:%M') }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="full-column">
+        <h3>Items</h3>
+        <ul class="item-list">
+          {% for item in items %}
+            <li>{{ item.Item_Name }} — Added by {{ item.add_user.username if item.add_user else 'unknown' }} on {{ item.add_date_time.strftime('%Y-%m-%d %H:%M') }}{% if item.last_update_datetime %}, updated by {{ item.update_user.username if item.update_user else 'unknown' }} on {{ item.last_update_datetime.strftime('%Y-%m-%d %H:%M') }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="full-column">
+        <h3>Tracking</h3>
+        <ul class="item-list">
+          {% for tracking in trackings %}
+            <li>{{ tracking.item.Item_Name if tracking.item else 'Item ' ~ tracking.intentory_item_oid }} — Count {{ tracking.item_count }} — Updated by {{ tracking.update_user.username if tracking.update_user else 'unknown' }} on {{ tracking.last_update_datetime.strftime('%Y-%m-%d %H:%M') }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

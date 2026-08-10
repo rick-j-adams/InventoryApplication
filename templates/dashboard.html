@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="dashboard-grid">
+  <section class="panel">
+    <h2>Product Types</h2>
+    <form action="{{ url_for('save_type') }}" method="post" class="inline-form">
+      <input type="text" name="Product_Type" placeholder="New type" required>
+      <button class="button small" type="submit">Add</button>
+    </form>
+    <ul class="item-list">
+      {% for type in item_types %}
+        <li>{{ type.Product_Type }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Models</h2>
+    <form action="{{ url_for('save_model') }}" method="post" class="inline-form">
+      <input type="text" name="Model_Number" placeholder="New model" required>
+      <button class="button small" type="submit">Add</button>
+    </form>
+    <ul class="item-list">
+      {% for model in item_models %}
+        <li>{{ model.Model_Number }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Manufacturers</h2>
+    <form action="{{ url_for('save_manufacturer') }}" method="post" class="inline-form">
+      <input type="text" name="Manufacturer_NAME" placeholder="New manufacturer" required>
+      <button class="button small" type="submit">Add</button>
+    </form>
+    <ul class="item-list">
+      {% for manufacturer in manufacturers %}
+        <li>{{ manufacturer.Manufacturer_NAME }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel full-width">
+    <h2>Inventory Items</h2>
+    <form action="{{ url_for('save_item') }}" method="post" class="grid-form">
+      <input type="text" name="Item_Name" placeholder="Item name" required>
+      <select name="ITEM_TYPE_OID" required>
+        <option value="">Type</option>
+        {% for type in item_types %}
+          <option value="{{ type.OID }}">{{ type.Product_Type }}</option>
+        {% endfor %}
+      </select>
+      <select name="MODEL_OID" required>
+        <option value="">Model</option>
+        {% for model in item_models %}
+          <option value="{{ model.OID }}">{{ model.Model_Number }}</option>
+        {% endfor %}
+      </select>
+      <select name="Manufacturer_oid" required>
+        <option value="">Manufacturer</option>
+        {% for manufacturer in manufacturers %}
+          <option value="{{ manufacturer.OID }}">{{ manufacturer.Manufacturer_NAME }}</option>
+        {% endfor %}
+      </select>
+      <button class="button" type="submit">Add Item</button>
+    </form>
+    <ul class="item-list wide-list">
+      {% for item in items %}
+        <li>{{ item.Item_Name }} — Type {{ item.item_type.Product_Type if item.item_type else item.ITEM_TYPE_OID }}, Model {{ item.model.Model_Number if item.model else item.MODEL_OID }}, Manufacturer {{ item.manufacturer.Manufacturer_NAME if item.manufacturer else item.Manufacturer_oid }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel full-width">
+    <h2>Tracking</h2>
+    <form action="{{ url_for('save_tracking') }}" method="post" class="grid-form">
+      <select name="intentory_item_oid" required>
+        <option value="">Inventory item</option>
+        {% for item in items %}
+          <option value="{{ item.OID }}">{{ item.Item_Name }}</option>
+        {% endfor %}
+      </select>
+      <input type="number" name="item_count" placeholder="Count" min="0" required>
+      <button class="button" type="submit">Add / Update Count</button>
+    </form>
+    <ul class="item-list wide-list">
+      {% for tracking in trackings %}
+        <li>{{ tracking.item.Item_Name if tracking.item else 'Item ' ~ tracking.intentory_item_oid }} — Count {{ tracking.item_count }} — Updated {{ tracking.last_update_datetime.strftime('%Y-%m-%d %H:%M') if tracking.last_update_datetime else 'N/A' }} — By {{ tracking.update_user.username if tracking.update_user else 'unknown' }}</li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}
