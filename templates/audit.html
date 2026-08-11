@@ -3,6 +3,16 @@
 <div class="dashboard-grid">
   <section class="panel full-width">
     <h2>Audit Log</h2>
+    {% if not is_admin %}
+    <div class="admin-only-note">Only admin_user can access the full audit log controls.</div>
+    {% endif %}
+    <form method="get" class="sort-form" style="margin-bottom: 1rem;">
+      <label for="sort_by">Sort by</label>
+      <select id="sort_by" name="sort_by" onchange="this.form.submit()" {% if not is_admin %}disabled{% endif %}>
+        <option value="item" {% if sort_by == 'item' %}selected{% endif %}>Item</option>
+        <option value="last_modified" {% if sort_by == 'last_modified' %}selected{% endif %}>Last Modified</option>
+      </select>
+    </form>
     <div class="audit-grid">
       <div>
         <h3>Types</h3>

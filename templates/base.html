@@ -16,9 +16,11 @@
       <div class="user-bar">
         <span>Signed in as {{ current_user.username }}</span>
         <a class="button secondary" href="{{ url_for('dashboard') }}">Dashboard</a>
+        {% if current_user.username == 'admin_user' %}
         <a class="button secondary" href="{{ url_for('inventory') }}">Inventory</a>
         <a class="button secondary" href="{{ url_for('users') }}">Users</a>
         <a class="button secondary" href="{{ url_for('audit_log') }}">Audit Log</a>
+        {% endif %}
         <a class="button secondary" href="{{ url_for('export_inventory_csv') }}">Export CSV</a>
         <a class="button secondary" href="{{ url_for('logout') }}">Logout</a>
       </div>

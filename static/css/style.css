@@ -42,8 +42,23 @@ body {
   transition: background 0.2s ease;
 }
 
+.button.disabled,
+.button:disabled,
+button:disabled {
+  background: #d7c3d0;
+  color: #7a596d;
+  cursor: not-allowed;
+  opacity: 0.9;
+  box-shadow: none;
+}
+
 .button:hover {
   background: #8b3f7a;
+}
+
+.button.disabled:hover,
+.button:disabled:hover {
+  background: #d7c3d0;
 }
 
 .button.secondary {
@@ -353,6 +368,14 @@ body {
   padding: 14px 18px;
   border-radius: 16px;
   font-weight: 600;
+  white-space: pre-line;
+  line-height: 1.6;
+}
+
+.flash-warning {
+  background: rgba(255, 240, 210, 0.96);
+  border: 1px solid #e7b15a;
+  color: #6f3f00;
 }
 
 .flash-success {
@@ -365,6 +388,16 @@ body {
   background: rgba(255, 224, 235, 0.9);
   border: 1px solid #dd7a9d;
   color: #6f1c39;
+}
+
+.admin-only-note {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 230, 240, 0.9);
+  border: 1px solid rgba(169, 77, 147, 0.2);
+  color: #6b2142;
+  font-size: 0.95rem;
 }
 
 @media (max-width: 720px) {

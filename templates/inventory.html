@@ -7,6 +7,7 @@
       <button type="button" class="button small secondary toggle-panel">Expand</button>
     </div>
     <div class="panel-body">
+    {% if is_admin %}
     <form action="{{ url_for('save_item') }}" method="post" class="grid-form">
       <input type="text" name="Item_Name" placeholder="Item name" required>
       <select name="ITEM_TYPE_OID" required>
@@ -31,6 +32,10 @@
       <input type="number" name="Alert_Level" placeholder="Alert level" min="0">
       <button class="button" type="submit">Add Item</button>
     </form>
+    {% else %}
+    <div class="admin-only-note">Only admin_user can add inventory items.</div>
+    <button class="button disabled" type="button" disabled>Add Item</button>
+    {% endif %}
     <ul class="item-list wide-list">
       {% for item in items %}
         <li>
@@ -42,10 +47,14 @@
             {% if item.Note %}<br><strong>Note: {{ item.Note }}</strong>{% endif %}
           </div>
           <div class="item-actions">
+            {% if is_admin %}
             <form action="{{ url_for('delete_item') }}" method="post" class="inline-form inline-delete">
               <input type="hidden" name="OID" value="{{ item.OID }}">
               <button class="button small secondary" type="submit">Delete</button>
             </form>
+            {% else %}
+            <button class="button small secondary disabled" type="button" disabled>Delete</button>
+            {% endif %}
             {% if item.Alert_Level is not none %}
               <span class="alert-adjust-controls">
                 <form action="{{ url_for('update_alert') }}" method="post" class="inline-form adjust-button" style="display:inline-block;">

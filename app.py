@@ -96,7 +96,10 @@ class InventoryItemTracking(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return InventoryItemUser.query.get(int(user_id))
+    try:
+        return InventoryItemUser.query.get(int(user_id))
+    except Exception:
+        return None
 
 def is_admin_user():
     return current_user.is_authenticated and current_user.username == 'admin_user'
@@ -125,6 +128,7 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        ensure_default_admin_user()
         user = InventoryItemUser.query.filter_by(username=username).first()
         if user and check_password_hash(user.encrypt_password_hash, password):
             login_user(user)
@@ -134,9 +138,9 @@ def login():
                 tracking = latest_tracking.get(item.OID)
                 count = tracking.item_count if tracking else 0
                 if item.Alert_Level is not None and count < item.Alert_Level:
-                    alerts.append(f'{item.Item_Name} is below alert level ({count} < {item.Alert_Level})')
+                    alerts.append(f'{item.Item_Name} is below alert threshold ({count} < {item.Alert_Level})')
             if alerts:
-                flash('ALERT: ' + ' | '.join(alerts), 'warning')
+                flash('ALERT ORDER MORE:\n' + '\n'.join(alerts), 'warning')
             flash('Welcome back, {}'.format(user.username), 'success')
             return redirect(url_for('dashboard'))
         flash('Invalid username or password', 'danger')
@@ -236,8 +240,9 @@ def inventory():
     item_models = InventoryItemModel.query.order_by(InventoryItemModel.Model_Number).all()
     manufacturers = InventoryItemManufacturer.query.order_by(InventoryItemManufacturer.Manufacturer_NAME).all()
     items = InventoryItem.query.order_by(InventoryItem.Item_Name).all()
+    is_admin = is_admin_user()
     return render_template('inventory.html', item_types=item_types, item_models=item_models,
-                           manufacturers=manufacturers, items=items)
+                           manufacturers=manufacturers, items=items, is_admin=is_admin)
 
 @app.route('/inventory/export-csv')
 @login_required
@@ -275,13 +280,26 @@ def export_inventory_csv():
 @app.route('/audit')
 @login_required
 def audit_log():
+    sort_by = request.args.get('sort_by', 'item')
     item_types = InventoryItemType.query.order_by(InventoryItemType.add_datetime.desc()).all()
     item_models = InventoryItemModel.query.order_by(InventoryItemModel.add_datetime.desc()).all()
     manufacturers = InventoryItemManufacturer.query.order_by(InventoryItemManufacturer.add_date_time.desc()).all()
-    items = InventoryItem.query.order_by(InventoryItem.add_date_time.desc()).all()
-    trackings = InventoryItemTracking.query.order_by(InventoryItemTracking.last_update_datetime.desc()).all()
+
+    items = InventoryItem.query.all()
+    if sort_by == 'last_modified':
+        items.sort(key=lambda item: (item.last_update_datetime or item.add_date_time or datetime.min), reverse=True)
+    else:
+        items.sort(key=lambda item: item.Item_Name.lower())
+
+    trackings = InventoryItemTracking.query.all()
+    if sort_by == 'last_modified':
+        trackings.sort(key=lambda tracking: tracking.last_update_datetime, reverse=True)
+    else:
+        trackings.sort(key=lambda tracking: (tracking.item.Item_Name.lower() if tracking.item else str(tracking.intentory_item_oid)))
+
     return render_template('audit.html', item_types=item_types, item_models=item_models,
-                           manufacturers=manufacturers, items=items, trackings=trackings)
+                           manufacturers=manufacturers, items=items, trackings=trackings,
+                           sort_by=sort_by, is_admin=is_admin_user())
 
 @app.route('/type/save', methods=['POST'])
 @login_required
@@ -421,6 +439,10 @@ def delete_manufacturer():
 @app.route('/item/delete', methods=['POST'])
 @login_required
 def delete_item():
+    if not is_admin_user():
+        flash('Only admin_user may delete inventory items.', 'danger')
+        return redirect(url_for('inventory'))
+
     oid = request.form.get('OID')
     if not oid:
         flash('Invalid inventory item selection.', 'danger')
@@ -442,6 +464,10 @@ def delete_item():
 @app.route('/item/save', methods=['POST'])
 @login_required
 def save_item():
+    if not is_admin_user():
+        flash('Only admin_user may add inventory items.', 'danger')
+        return redirect(url_for('inventory'))
+
     oid = request.form.get('OID')
     item_name = request.form.get('Item_Name', '').strip()
     item_type_oid = request.form.get('ITEM_TYPE_OID')
@@ -572,7 +598,7 @@ def adjust_tracking():
 
     flash(f'Inventory count {action} to {tracking.item_count}.', 'success')
     if item.Alert_Level is not None and tracking.item_count < item.Alert_Level:
-        flash(f'ALERT: {item.Item_Name} count {tracking.item_count} is below alert level {item.Alert_Level}.', 'warning')
+        flash(f'ALERT ORDER MORE: {item.Item_Name} count {tracking.item_count} is below alert threshold {item.Alert_Level}.', 'warning')
     return redirect(url_for('dashboard'))
 
 @app.route('/users')
@@ -651,6 +677,18 @@ def delete_user():
         flash('User deleted.', 'success')
     return redirect(url_for('users'))
 
+def ensure_default_admin_user():
+    if not InventoryItemUser.query.filter_by(username='admin_user').first():
+        password_hash = generate_password_hash('password1')
+        admin = InventoryItemUser(username='admin_user', encrypt_password_hash=password_hash)
+        db.session.add(admin)
+        db.session.commit()
+        print('Created admin_user with password password1')
+        return True
+    print('admin_user already exists')
+    return False
+
+
 def ensure_database():
     db.create_all()
 
@@ -662,20 +700,14 @@ def ensure_database():
         if 'Alert_Level' not in existing_columns:
             connection.execute(text('ALTER TABLE inventory_item ADD COLUMN Alert_Level INTEGER NOT NULL DEFAULT 0'))
 
-    if not InventoryItemUser.query.filter_by(username='admin_user').first():
-        password_hash = generate_password_hash('password1')
-        admin = InventoryItemUser(username='admin_user', encrypt_password_hash=password_hash)
-        db.session.add(admin)
-        db.session.commit()
-        print('Created admin_user with password password1')
-    else:
-        print('admin_user already exists')
+    ensure_default_admin_user()
 
 @app.cli.command('init-db')
 def init_db():
     ensure_database()
 
+with app.app_context():
+    ensure_database()
+
 if __name__ == '__main__':
-    with app.app_context():
-        ensure_database()
     app.run(host='0.0.0.0', port=5000, debug=True)
