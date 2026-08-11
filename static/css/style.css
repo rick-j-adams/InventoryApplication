@@ -279,6 +279,28 @@ body {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  align-items: center;
+}
+
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.alert-adjust-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.inline-delete {
+  margin: 0;
+}
+
+.adjust-button {
+  margin: 0;
 }
 
 .flash-grid {

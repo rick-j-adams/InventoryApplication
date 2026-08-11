@@ -1,82 +1,10 @@
 {% extends 'base.html' %}
 {% block content %}
 <div class="dashboard-grid">
-  <section class="panel full-width collapsible-panel">
-    <div class="panel-header">
-      <h2>Product Types</h2>
-      <button type="button" class="button small secondary toggle-panel">Collapse</button>
-    </div>
-    <div class="panel-body">
-    <form action="{{ url_for('save_type') }}" method="post" class="inline-form">
-      <input type="text" name="Product_Type" placeholder="New type" required>
-      <button class="button small" type="submit">Add</button>
-    </form>
-    <ul class="item-list">
-      {% for type in item_types %}
-        <li>
-          {{ type.Product_Type }}
-          <form action="{{ url_for('delete_type') }}" method="post" class="inline-form inline-delete">
-            <input type="hidden" name="OID" value="{{ type.OID }}">
-            <button class="button small secondary" type="submit">Delete</button>
-          </form>
-        </li>
-      {% endfor %}
-    </ul>
-    </div>
-  </section>
-
-  <section class="panel full-width collapsible-panel">
-    <div class="panel-header">
-      <h2>Models</h2>
-      <button type="button" class="button small secondary toggle-panel">Collapse</button>
-    </div>
-    <div class="panel-body">
-    <form action="{{ url_for('save_model') }}" method="post" class="inline-form">
-      <input type="text" name="Model_Number" placeholder="New model" required>
-      <button class="button small" type="submit">Add</button>
-    </form>
-    <ul class="item-list">
-      {% for model in item_models %}
-        <li>
-          {{ model.Model_Number }}
-          <form action="{{ url_for('delete_model') }}" method="post" class="inline-form inline-delete">
-            <input type="hidden" name="OID" value="{{ model.OID }}">
-            <button class="button small secondary" type="submit">Delete</button>
-          </form>
-        </li>
-      {% endfor %}
-    </ul>
-    </div>
-  </section>
-
-  <section class="panel full-width collapsible-panel">
-    <div class="panel-header">
-      <h2>Manufacturers</h2>
-      <button type="button" class="button small secondary toggle-panel">Collapse</button>
-    </div>
-    <div class="panel-body">
-    <form action="{{ url_for('save_manufacturer') }}" method="post" class="inline-form">
-      <input type="text" name="Manufacturer_NAME" placeholder="New manufacturer" required>
-      <button class="button small" type="submit">Add</button>
-    </form>
-    <ul class="item-list">
-      {% for manufacturer in manufacturers %}
-        <li>
-          {{ manufacturer.Manufacturer_NAME }}
-          <form action="{{ url_for('delete_manufacturer') }}" method="post" class="inline-form inline-delete">
-            <input type="hidden" name="OID" value="{{ manufacturer.OID }}">
-            <button class="button small secondary" type="submit">Delete</button>
-          </form>
-        </li>
-      {% endfor %}
-    </ul>
-    </div>
-  </section>
-
-  <section class="panel full-width collapsible-panel">
+  <section class="panel full-width collapsible-panel collapsed">
     <div class="panel-header">
       <h2>Inventory Items</h2>
-      <button type="button" class="button small secondary toggle-panel">Collapse</button>
+      <button type="button" class="button small secondary toggle-panel">Expand</button>
     </div>
     <div class="panel-body">
     <form action="{{ url_for('save_item') }}" method="post" class="grid-form">
@@ -106,11 +34,103 @@
     <ul class="item-list wide-list">
       {% for item in items %}
         <li>
-          {{ item.Item_Name }} — Type {{ item.item_type.Product_Type if item.item_type else item.ITEM_TYPE_OID }}, Model {{ item.model.Model_Number if item.model else item.MODEL_OID }}, Manufacturer {{ item.manufacturer.Manufacturer_NAME if item.manufacturer else item.Manufacturer_oid }}
-          {% if item.Alert_Level is not none %}Alert: {{ item.Alert_Level }}{% endif %}
-          {% if item.Note %}<br>Note: {{ item.Note }}{% endif %}
-          <form action="{{ url_for('delete_item') }}" method="post" class="inline-form inline-delete">
-            <input type="hidden" name="OID" value="{{ item.OID }}">
+          <div class="item-details">
+            {{ item.Item_Name }} — Type {{ item.item_type.Product_Type if item.item_type else item.ITEM_TYPE_OID }}, Model {{ item.model.Model_Number if item.model else item.MODEL_OID }}, Manufacturer {{ item.manufacturer.Manufacturer_NAME if item.manufacturer else item.Manufacturer_oid }}
+            {% if item.Alert_Level is not none %}
+              Alert: {{ item.Alert_Level }}
+            {% endif %}
+            {% if item.Note %}<br>Note: {{ item.Note }}{% endif %}
+          </div>
+          <div class="item-actions">
+            <form action="{{ url_for('delete_item') }}" method="post" class="inline-form inline-delete">
+              <input type="hidden" name="OID" value="{{ item.OID }}">
+              <button class="button small secondary" type="submit">Delete</button>
+            </form>
+            {% if item.Alert_Level is not none %}
+              <span class="alert-adjust-controls">
+                <form action="{{ url_for('update_alert') }}" method="post" class="inline-form adjust-button" style="display:inline-block;">
+                  <input type="hidden" name="OID" value="{{ item.OID }}">
+                  <input type="hidden" name="Alert_Level" value="{{ item.Alert_Level - 1 if item.Alert_Level > 0 else 0 }}">
+                  <button class="button tiny secondary" type="submit">-</button>
+                </form>
+                <form action="{{ url_for('update_alert') }}" method="post" class="inline-form adjust-button" style="display:inline-block;">
+                  <input type="hidden" name="OID" value="{{ item.OID }}">
+                  <input type="hidden" name="Alert_Level" value="{{ item.Alert_Level + 1 }}">
+                  <button class="button tiny" type="submit">+</button>
+                </form>
+              </span>
+            {% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+    </div>
+  </section>
+
+  <section class="panel full-width collapsible-panel collapsed">
+    <div class="panel-header">
+      <h2>Product Types</h2>
+      <button type="button" class="button small secondary toggle-panel">Expand</button>
+    </div>
+    <div class="panel-body">
+    <form action="{{ url_for('save_type') }}" method="post" class="inline-form">
+      <input type="text" name="Product_Type" placeholder="New type" required>
+      <button class="button small" type="submit">Add</button>
+    </form>
+    <ul class="item-list">
+      {% for type in item_types %}
+        <li>
+          {{ type.Product_Type }}
+          <form action="{{ url_for('delete_type') }}" method="post" class="inline-form inline-delete">
+            <input type="hidden" name="OID" value="{{ type.OID }}">
+            <button class="button small secondary" type="submit">Delete</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+    </div>
+  </section>
+
+  <section class="panel full-width collapsible-panel collapsed">
+    <div class="panel-header">
+      <h2>Models</h2>
+      <button type="button" class="button small secondary toggle-panel">Expand</button>
+    </div>
+    <div class="panel-body">
+    <form action="{{ url_for('save_model') }}" method="post" class="inline-form">
+      <input type="text" name="Model_Number" placeholder="New model" required>
+      <button class="button small" type="submit">Add</button>
+    </form>
+    <ul class="item-list">
+      {% for model in item_models %}
+        <li>
+          {{ model.Model_Number }}
+          <form action="{{ url_for('delete_model') }}" method="post" class="inline-form inline-delete">
+            <input type="hidden" name="OID" value="{{ model.OID }}">
+            <button class="button small secondary" type="submit">Delete</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+    </div>
+  </section>
+
+  <section class="panel full-width collapsible-panel collapsed">
+    <div class="panel-header">
+      <h2>Manufacturers</h2>
+      <button type="button" class="button small secondary toggle-panel">Expand</button>
+    </div>
+    <div class="panel-body">
+    <form action="{{ url_for('save_manufacturer') }}" method="post" class="inline-form">
+      <input type="text" name="Manufacturer_NAME" placeholder="New manufacturer" required>
+      <button class="button small" type="submit">Add</button>
+    </form>
+    <ul class="item-list">
+      {% for manufacturer in manufacturers %}
+        <li>
+          {{ manufacturer.Manufacturer_NAME }}
+          <form action="{{ url_for('delete_manufacturer') }}" method="post" class="inline-form inline-delete">
+            <input type="hidden" name="OID" value="{{ manufacturer.OID }}">
             <button class="button small secondary" type="submit">Delete</button>
           </form>
         </li>
@@ -121,25 +141,50 @@
 </div>
 <script>
   const INVENTORY_SCROLL_KEY = 'inventoryScrollPosition';
+  const INVENTORY_PANEL_STATE_KEY = 'inventoryPanelState';
+
+  if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+  }
+
+  const saveInventoryScroll = () => {
+    sessionStorage.setItem(INVENTORY_SCROLL_KEY, window.scrollY.toString());
+  };
+
   document.querySelectorAll('form').forEach(form => {
-    form.addEventListener('submit', () => {
-      sessionStorage.setItem(INVENTORY_SCROLL_KEY, window.scrollY.toString());
-    });
+    form.addEventListener('submit', saveInventoryScroll);
   });
 
   const savedInventoryScroll = sessionStorage.getItem(INVENTORY_SCROLL_KEY);
   if (savedInventoryScroll !== null) {
-    window.scrollTo(0, Number(savedInventoryScroll));
-    sessionStorage.removeItem(INVENTORY_SCROLL_KEY);
+    requestAnimationFrame(() => {
+      window.scrollTo(0, Number(savedInventoryScroll));
+      sessionStorage.removeItem(INVENTORY_SCROLL_KEY);
+    });
   }
 
-  document.querySelectorAll('.toggle-panel').forEach(button => {
-    button.addEventListener('click', () => {
-      const panel = button.closest('.collapsible-panel');
-      if (!panel) return;
-      panel.classList.toggle('collapsed');
-      button.textContent = panel.classList.contains('collapsed') ? 'Expand' : 'Collapse';
-    });
+  const savedPanelState = JSON.parse(sessionStorage.getItem(INVENTORY_PANEL_STATE_KEY) || '{}');
+
+  document.querySelectorAll('.collapsible-panel').forEach((panel, index) => {
+    const button = panel.querySelector('.toggle-panel');
+    const key = `panel_${index}`;
+    const state = savedPanelState[key];
+    if (state === 'expanded') {
+      panel.classList.remove('collapsed');
+      if (button) button.textContent = 'Collapse';
+    } else if (state === 'collapsed') {
+      panel.classList.add('collapsed');
+      if (button) button.textContent = 'Expand';
+    }
+
+    if (button) {
+      button.addEventListener('click', () => {
+        const isCollapsed = panel.classList.toggle('collapsed');
+        button.textContent = isCollapsed ? 'Expand' : 'Collapse';
+        savedPanelState[key] = isCollapsed ? 'collapsed' : 'expanded';
+        sessionStorage.setItem(INVENTORY_PANEL_STATE_KEY, JSON.stringify(savedPanelState));
+      });
+    }
   });
 </script>
 {% endblock %}

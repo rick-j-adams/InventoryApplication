@@ -21,28 +21,31 @@
       <div class="chart-card">
         <canvas id="inventoryChart"></canvas>
       </div>
-      <div class="chart-controls">
-        <h3>Adjust Counts</h3>
-        <ul class="control-list">
-          {% for tracked in tracked_items %}
-            <li class="control-list-item">
-              <span class="control-item-label">{{ tracked.item.Item_Name }} — {{ tracked.count }}</span>
-              <div class="adjust-row">
-                <form action="{{ url_for('adjust_tracking') }}" method="post" class="inline-form adjust-button" data-save-scroll>
-                  <input type="hidden" name="intentory_item_oid" value="{{ tracked.item.OID }}">
-                  <input type="hidden" name="delta" value="-1">
-                  <button class="button small secondary">-</button>
-                </form>
-                <form action="{{ url_for('adjust_tracking') }}" method="post" class="inline-form adjust-button" data-save-scroll>
-                  <input type="hidden" name="intentory_item_oid" value="{{ tracked.item.OID }}">
-                  <input type="hidden" name="delta" value="1">
-                  <button class="button small">+</button>
-                </form>
-              </div>
-            </li>
-          {% endfor %}
-        </ul>
-      </div>
+    </div>
+  </section>
+
+  <section class="panel full-width">
+    <h2>Adjust Counts</h2>
+    <div class="chart-controls">
+      <ul class="control-list">
+        {% for tracked in tracked_items %}
+          <li class="control-list-item">
+            <span class="control-item-label">{{ tracked.item.Item_Name }} — {{ tracked.count }}</span>
+            <div class="adjust-row">
+              <form action="{{ url_for('adjust_tracking') }}" method="post" class="inline-form adjust-button" data-save-scroll>
+                <input type="hidden" name="intentory_item_oid" value="{{ tracked.item.OID }}">
+                <input type="hidden" name="delta" value="-1">
+                <button class="button small secondary">-</button>
+              </form>
+              <form action="{{ url_for('adjust_tracking') }}" method="post" class="inline-form adjust-button" data-save-scroll>
+                <input type="hidden" name="intentory_item_oid" value="{{ tracked.item.OID }}">
+                <input type="hidden" name="delta" value="1">
+                <button class="button small">+</button>
+              </form>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
     </div>
   </section>
 </div>

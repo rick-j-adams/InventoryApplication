@@ -8,6 +8,7 @@
       <input type="password" name="password" placeholder="Password" required>
       <button class="button" type="submit">Add User</button>
     </form>
+    <p class="note">Only <strong>admin_user</strong> may add, update, or delete users.</p>
     <div class="user-table-wrapper">
       <table class="user-table">
         <thead>
@@ -23,14 +24,22 @@
             <td>
               <form action="{{ url_for('save_user') }}" method="post" class="inline-form user-form">
                 <input type="hidden" name="OID" value="{{ user.OID }}">
-                <input type="text" name="username" value="{{ user.username }}" required>
+                {% if user.username == 'admin_user' %}
+                  <input type="text" name="username" value="{{ user.username }}" readonly>
+                {% else %}
+                  <input type="text" name="username" value="{{ user.username }}" required>
+                {% endif %}
                 <input type="password" name="password" placeholder="New password">
                 <button class="button small" type="submit">Update</button>
               </form>
+              {% if user.username != 'admin_user' %}
               <form action="{{ url_for('delete_user') }}" method="post" class="inline-form user-form">
                 <input type="hidden" name="OID" value="{{ user.OID }}">
                 <button class="button small secondary" type="submit">Delete</button>
               </form>
+              {% else %}
+                <span class="note">Cannot delete admin_user</span>
+              {% endif %}
             </td>
           </tr>
           {% endfor %}

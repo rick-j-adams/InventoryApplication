@@ -98,6 +98,9 @@ class InventoryItemTracking(db.Model):
 def load_user(user_id):
     return InventoryItemUser.query.get(int(user_id))
 
+def is_admin_user():
+    return current_user.is_authenticated and current_user.username == 'admin_user'
+
 @app.context_processor
 def inject_now():
     return {'now': datetime.utcnow()}
@@ -453,6 +456,35 @@ def save_item():
     flash('Item saved.', 'success')
     return redirect(url_for('inventory'))
 
+@app.route('/item/update-alert', methods=['POST'])
+@login_required
+def update_alert():
+    oid = request.form.get('OID')
+    alert_level = request.form.get('Alert_Level', '').strip()
+    if not oid:
+        flash('Invalid inventory item selection.', 'danger')
+        return redirect(url_for('inventory'))
+
+    try:
+        alert_level_value = int(alert_level) if alert_level else 0
+        if alert_level_value < 0:
+            alert_level_value = 0
+    except ValueError:
+        flash('Invalid alert level value.', 'danger')
+        return redirect(url_for('inventory'))
+
+    item = InventoryItem.query.get(int(oid))
+    if item is None:
+        flash('Inventory item not found.', 'danger')
+    else:
+        item.Alert_Level = alert_level_value
+        item.update_user_oid = current_user.OID
+        item.last_update_datetime = datetime.utcnow()
+        db.session.add(item)
+        db.session.commit()
+        flash('Alert level updated.', 'success')
+    return redirect(url_for('inventory'))
+
 @app.route('/tracking/save', methods=['POST'])
 @login_required
 def save_tracking():
@@ -492,16 +524,14 @@ def adjust_tracking():
         flash('Inventory item not found.', 'danger')
         return redirect(url_for('dashboard'))
 
-    tracking = InventoryItemTracking.query.filter_by(intentory_item_oid=item.OID).order_by(InventoryItemTracking.last_update_datetime.desc()).first()
-    if tracking:
-        tracking.item_count = max(0, tracking.item_count + delta)
-        tracking.update_user_oid = current_user.OID
-        tracking.last_update_datetime = datetime.utcnow()
-    else:
-        tracking = InventoryItemTracking(intentory_item_oid=item.OID,
-                                         item_count=max(0, delta),
-                                         update_user_oid=current_user.OID,
-                                         last_update_datetime=datetime.utcnow())
+    latest_tracking = InventoryItemTracking.query.filter_by(intentory_item_oid=item.OID).order_by(InventoryItemTracking.last_update_datetime.desc()).first()
+    previous_count = latest_tracking.item_count if latest_tracking else 0
+    new_count = max(0, previous_count + delta)
+
+    tracking = InventoryItemTracking(intentory_item_oid=item.OID,
+                                     item_count=new_count,
+                                     update_user_oid=current_user.OID,
+                                     last_update_datetime=datetime.utcnow())
     db.session.add(tracking)
     db.session.commit()
 
@@ -519,12 +549,18 @@ def adjust_tracking():
 @app.route('/users')
 @login_required
 def users():
+    if not is_admin_user():
+        flash('User management is restricted to admin_user.', 'danger')
+        return redirect(url_for('dashboard'))
     users = InventoryItemUser.query.order_by(InventoryItemUser.username).all()
     return render_template('users.html', users=users)
 
 @app.route('/user/save', methods=['POST'])
 @login_required
 def save_user():
+    if not is_admin_user():
+        flash('Only admin_user may add or update users.', 'danger')
+        return redirect(url_for('dashboard'))
     oid = request.form.get('OID')
     username = request.form.get('username', '').strip()
     password = request.form.get('password', '').strip()
@@ -543,7 +579,11 @@ def save_user():
         if user is None:
             flash('User not found.', 'danger')
             return redirect(url_for('users'))
-        user.username = username
+        if user.username == 'admin_user' and username != 'admin_user':
+            flash('admin_user username may not be changed.', 'danger')
+            return redirect(url_for('users'))
+        if user.username != 'admin_user':
+            user.username = username
         if password:
             user.encrypt_password_hash = generate_password_hash(password)
         flash('User updated.', 'success')
@@ -561,6 +601,9 @@ def save_user():
 @app.route('/user/delete', methods=['POST'])
 @login_required
 def delete_user():
+    if not is_admin_user():
+        flash('Only admin_user may delete users.', 'danger')
+        return redirect(url_for('dashboard'))
     oid = request.form.get('OID')
     if not oid:
         flash('Invalid user selection.', 'danger')
@@ -569,6 +612,8 @@ def delete_user():
     user = InventoryItemUser.query.get(int(oid))
     if user is None:
         flash('User not found.', 'danger')
+    elif user.username == 'admin_user':
+        flash('admin_user cannot be deleted.', 'danger')
     elif user.OID == current_user.OID:
         flash('You cannot delete your own account while logged in.', 'danger')
     else:
