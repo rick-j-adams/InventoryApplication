@@ -164,7 +164,33 @@ def create_or_update_entity(model, form_data, obj=None):
 @app.route('/dashboard')
 @login_required
 def dashboard():
-    items = InventoryItem.query.order_by(InventoryItem.Item_Name).all()
+    # filters from querystring
+    type_oid = request.args.get('ITEM_TYPE_OID')
+    model_oid = request.args.get('MODEL_OID')
+    manufacturer_oid = request.args.get('Manufacturer_oid')
+
+    item_types = InventoryItemType.query.order_by(InventoryItemType.Product_Type).all()
+    item_models = InventoryItemModel.query.order_by(InventoryItemModel.Model_Number).all()
+    manufacturers = InventoryItemManufacturer.query.order_by(InventoryItemManufacturer.Manufacturer_NAME).all()
+
+    items_query = InventoryItem.query
+    if type_oid:
+        try:
+            items_query = items_query.filter(InventoryItem.ITEM_TYPE_OID == int(type_oid))
+        except ValueError:
+            pass
+    if model_oid:
+        try:
+            items_query = items_query.filter(InventoryItem.MODEL_OID == int(model_oid))
+        except ValueError:
+            pass
+    if manufacturer_oid:
+        try:
+            items_query = items_query.filter(InventoryItem.Manufacturer_oid == int(manufacturer_oid))
+        except ValueError:
+            pass
+
+    items = items_query.order_by(InventoryItem.Item_Name).all()
     trackings = InventoryItemTracking.query.order_by(InventoryItemTracking.intentory_item_oid, InventoryItemTracking.last_update_datetime.desc()).all()
     latest_tracking = {}
     for tracking in trackings:
@@ -198,7 +224,10 @@ def dashboard():
         })
 
     chart_json = json.dumps(chart_data)
-    return render_template('dashboard.html', items=items, trackings=trackings, chart_data=chart_json, tracked_items=tracked_items)
+    return render_template('dashboard.html', items=items, trackings=trackings, chart_data=chart_json,
+                           tracked_items=tracked_items, item_types=item_types, item_models=item_models,
+                           manufacturers=manufacturers, selected_type=type_oid, selected_model=model_oid,
+                           selected_manufacturer=manufacturer_oid)
 
 @app.route('/inventory')
 @login_required
@@ -649,4 +678,4 @@ def init_db():
 if __name__ == '__main__':
     with app.app_context():
         ensure_database()
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

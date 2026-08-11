@@ -39,7 +39,7 @@
             {% if item.Alert_Level is not none %}
               Alert: {{ item.Alert_Level }}
             {% endif %}
-            {% if item.Note %}<br>Note: {{ item.Note }}{% endif %}
+            {% if item.Note %}<br><strong>Note: {{ item.Note }}</strong>{% endif %}
           </div>
           <div class="item-actions">
             <form action="{{ url_for('delete_item') }}" method="post" class="inline-form inline-delete">

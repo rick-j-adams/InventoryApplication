@@ -26,6 +26,30 @@
 
   <section class="panel full-width">
     <h2>Adjust Counts</h2>
+    <div class="filter-panel">
+      <form method="get" class="inline-form filter-form">
+        <select name="ITEM_TYPE_OID">
+          <option value="">All Types</option>
+          {% for t in item_types %}
+            <option value="{{ t.OID }}" {% if selected_type and selected_type|int == t.OID %}selected{% endif %}>{{ t.Product_Type }}</option>
+          {% endfor %}
+        </select>
+        <select name="MODEL_OID">
+          <option value="">All Models</option>
+          {% for m in item_models %}
+            <option value="{{ m.OID }}" {% if selected_model and selected_model|int == m.OID %}selected{% endif %}>{{ m.Model_Number }}</option>
+          {% endfor %}
+        </select>
+        <select name="Manufacturer_oid">
+          <option value="">All Manufacturers</option>
+          {% for mf in manufacturers %}
+            <option value="{{ mf.OID }}" {% if selected_manufacturer and selected_manufacturer|int == mf.OID %}selected{% endif %}>{{ mf.Manufacturer_NAME }}</option>
+          {% endfor %}
+        </select>
+        <button class="button small" type="submit">Filter</button>
+        <a class="button small secondary" href="{{ url_for('dashboard') }}">Clear</a>
+      </form>
+    </div>
     <div class="chart-controls">
       <ul class="control-list">
         {% for tracked in tracked_items %}

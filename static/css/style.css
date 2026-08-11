@@ -203,6 +203,39 @@ body {
   margin-bottom: 18px;
 }
 
+.filter-panel {
+  margin-bottom: 12px;
+}
+
+.filter-form {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-form select {
+  border: 1px solid rgba(169, 77, 147, 0.35);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: white;
+  color: #3d0a2a;
+}
+
+.filter-form .button.small {
+  padding: 8px 12px;
+}
+
+@media (max-width: 640px) {
+  .filter-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filter-form select {
+    width: 100%;
+  }
+}
+
 .grid-form {
   grid-template-columns: 1fr 1fr auto;
   align-items: end;
@@ -273,6 +306,13 @@ body {
   margin: 0;
   display: grid;
   gap: 10px;
+}
+
+.item-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
 }
 
 .wide-list li {
